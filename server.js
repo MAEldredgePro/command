@@ -66,7 +66,7 @@ function mountClientSockEventHandlers(clientSock) {
     clientSock.on('data', handleClientData)
 
     // Don't let client socket errors crash the server.
-    clientSock.on('error', (err) => {})
+    clientSock.on('error', (err) => { })
 
     // Mount the handler to call when a client disconnects.
     clientSock.on('close', handleClientClose)
@@ -83,7 +83,7 @@ function handleClientData(data) {
     // Log the client's chat message to the server log file and server console.
     log(this.clientID, message)
 
-    if (message.startsWith('/') && handleCommand(message)) {return;}
+    if (message.startsWith('/') && handleCommand(this, message)) { return; }
 
     // Broadcast the client's chat message to all the other clients,
     // being sure to exclude the sending client from the list of targets.
@@ -118,10 +118,23 @@ function handleClientClose() {
     if (connectedClients.length === 0) { numActiveConnections = 0 }
 }
 
-function handleCommand(message) {
+function handleCommand(clientSock, message) {
 
-    const [ command, ...arguments ] = message.replace(/^\//,'').split(' ')
+    const [command, ...arguments] = message.replace(/^\//, '').split(' ')
     console.log(`command: ${command}`)
     console.log(`argumentsString: ${arguments}`)
+    switch (command.toLowerCase()) {
+        case 'clientlist':
+            handleClientList(clientSock)
+            break;
+        default: return false;
+    }
     return true;
+}
+
+function handleClientList(clientSock) {
+    clientSock.write(`[Server] Currently connected clients:\n`)
+    connectedClients.forEach((connectedClient) => {
+        clientSock.write(`[Server] ${connectedClient.clientID}\n`)
+    })
 }
