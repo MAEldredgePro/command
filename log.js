@@ -30,4 +30,4 @@ function write(from, message, logToConsole = true) {
     return messageString
 }
 
-module.exports = { create, write }
+module.exports = { create, write, addSender}

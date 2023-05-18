@@ -78,8 +78,12 @@ server.listen(3000, () => {
 
 // handle commands and messages coming from a client
 function handleClientData(data) {
-    // Log the client's chat message to the chat.log file and server console.
-    log(this.clientID, data.toString().trim())
+    const message = data.toString().trim()
+
+    // Log the client's chat message to the server log file and server console.
+    log(this.clientID, message)
+
+    if (message.startsWith('/') && handleCommand(message)) {return;}
 
     // Broadcast the client's chat message to all the other clients,
     // being sure to exclude the sending client from the list of targets.
@@ -89,10 +93,10 @@ function handleClientData(data) {
         connectedClients.filter(c => c.clientID !== this.clientID)
 
     // Format the chat message.
-    const broadcastMessage = `[${this.clientID}] ${data.toString()}`
+    const chatMessage = logger.addSender(this.clientID, message)
 
     // Distribute the chat message.
-    targets.forEach(target => target.write(`${broadcastMessage}`))
+    targets.forEach(target => target.write(`${chatMessage}`))
 }
 
 // Handle the event generated when the client disconnects from the server.
@@ -112,4 +116,12 @@ function handleClientClose() {
     // Log the number of remaining connected clients.
     log('Server', `${connectedClients.length} ${client_s_String} attached`)
     if (connectedClients.length === 0) { numActiveConnections = 0 }
+}
+
+function handleCommand(message) {
+
+    const [ command, ...arguments ] = message.replace(/^\//,'').split(' ')
+    console.log(`command: ${command}`)
+    console.log(`argumentsString: ${arguments}`)
+    return true;
 }
