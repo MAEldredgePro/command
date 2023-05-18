@@ -4,21 +4,25 @@ var logfilename;
 function create(filename) {
     logfilename = filename;
 
-    const initialMessage = createLogMessage('Logger', 'Starting new log')
-    fs.writeFileSync(logfilename, initialMessage + '\n', { flag: 'w' })
+    const message = addTimestamp(addSender('Logger', 'Starting new log'))
+    fs.writeFileSync(logfilename, message + '\n', { flag: 'w' })
 }
 
-function createLogMessage(from, message) {
+function addSender(sender, message) {
+    return `[${sender}] ${message}`;
+}
+
+function addTimestamp(message) {
     const now = new Date();
     const timestamp = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
-    return `${timestamp} [${from}] ${message}`.trim();
+    return `${timestamp} ${message}`;
 }
 
 function write(from, message, logToConsole = true) {
-    const messageString = createLogMessage(from, message);
+    const messageString = addSender(from, message);
 
     // Write the message string to the log file.
-    fs.writeFileSync(logfilename, messageString + '\n', { flag: 'a' })
+    fs.writeFileSync(logfilename, addTimestamp(messageString) + '\n', { flag: 'a' })
 
     // Write to the console as well if requested.
     if (logToConsole) console.log(messageString);

@@ -17,7 +17,12 @@ client.on('error', (err) => {
 })
 
 client.on('data', (data) => {
-    process.stdout.write(`${data.toString()}`)
+    console.log(`${data.toString().trim()}`)
+//    process.stdout.write(`${data.toString()}`)
+})
+
+client.on('close', () => {
+    console.log('The connection to the server has been terminated.')
 })
 
 process.stdin.pipe(client)

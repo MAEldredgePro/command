@@ -1,7 +1,7 @@
 // Create the chat.log file to keep track of server events and
 // client interactions.
 const logger = require('./log')
-logger.create('./chat.log')
+logger.create('./server.log')
 
 // Alias the logger.write function to a shorter identifier that
 // is intuitive and easy to type.
@@ -45,8 +45,8 @@ server.on('connection', (clientSock) => {
     // has joined the chat
     connectedClients.forEach(clientSock => clientSock.write(joinMessage + '\n'))
 
-    // Mount the event handlers for this socket
-    mountSocketEventHandlers(clientSock)
+    // Mount the event handlers for this client socket connection
+    mountClientSockEventHandlers(clientSock)
 
     // Add the current connection to the list of connected clients
     connectedClients.push(clientSock)
@@ -59,51 +59,57 @@ server.on('connection', (clientSock) => {
     clientSock.write(`[Server] Welcome to the chat, ${clientSock.clientID}\n`)
 })
 
-function mountSocketEventHandlers(clientSock) {
-    // Handle the 'data' event, generated when a client types something and sends
-    // it as a chat message to the server to be broadcast to all other clients.
-    clientSock.on('data', (data) => {
-        // Log the client's chat message to the chat.log file and server console.
-        log(clientSock.clientID, data.toString())
-
-        // Broadcast the client's chat message to all the other clients,
-        // being sure to exclude the sending client from the list of targets.
-
-        // Select the targets.
-        const targets =
-            connectedClients.filter(c => c.clientID !== clientSock.clientID)
-
-        // Format the chat message.
-        const broadcastMessage = `[${clientSock.clientID}] ${data.toString()}`
-
-        // Distribute the chat message.
-        targets.forEach(target => target.write(`${broadcastMessage}`))
-    })
+function mountClientSockEventHandlers(clientSock) {
+    // Mount the client data handler.  the 'data' event is generated when
+    // a client types a command or chat message and sends it
+    // to the server.
+    clientSock.on('data', handleClientData)
 
     // Don't let client socket errors crash the server.
-    clientSock.on('error', (err) => {
-        // console.log('Socket error:', err.code);
-    })
+    clientSock.on('error', (err) => {})
 
-    clientSock.on('close', () => {
-        // remove client from our list of connected clients
-        connectedClients =
-            connectedClients.filter(c => c.clientID !== clientSock.clientID)
-
-        // Log to the server console that this client has disconnected.
-        const leaveMessage = `${clientSock.clientID} has left the chat`
-        log('Server', leaveMessage)
-
-        // Notify all other clients that this client has left the chat
-        connectedClients.forEach(c => c.write(`[Server] ${leaveMessage}\n`))
-        const client_s_String = `client${connectedClients.length === 1 ? '' : 's'}`
-
-        // Log the number of remaining connected clients.
-        log('Server', `${connectedClients.length} ${client_s_String} attached`)
-        if (connectedClients.length === 0) { numActiveConnections = 0 }
-    })
+    // Mount the handler to call when a client disconnects.
+    clientSock.on('close', handleClientClose)
 }
 
 server.listen(3000, () => {
     log('Server', `Chat server is up and listening for clients on port ${port}`)
 })
+
+// handle commands and messages coming from a client
+function handleClientData(data) {
+    // Log the client's chat message to the chat.log file and server console.
+    log(this.clientID, data.toString().trim())
+
+    // Broadcast the client's chat message to all the other clients,
+    // being sure to exclude the sending client from the list of targets.
+
+    // Select the targets.
+    const targets =
+        connectedClients.filter(c => c.clientID !== this.clientID)
+
+    // Format the chat message.
+    const broadcastMessage = `[${this.clientID}] ${data.toString()}`
+
+    // Distribute the chat message.
+    targets.forEach(target => target.write(`${broadcastMessage}`))
+}
+
+// Handle the event generated when the client disconnects from the server.
+function handleClientClose() {
+    // remove client from our list of connected clients
+    connectedClients =
+        connectedClients.filter(c => c.clientID !== this.clientID)
+
+    // Log to the server console that this client has disconnected.
+    const leaveMessage = `${this.clientID} has left the chat`
+    log('Server', leaveMessage)
+
+    // Notify all other clients that this client has left the chat
+    connectedClients.forEach(c => c.write(`[Server] ${leaveMessage}\n`))
+    const client_s_String = `client${connectedClients.length === 1 ? '' : 's'}`
+
+    // Log the number of remaining connected clients.
+    log('Server', `${connectedClients.length} ${client_s_String} attached`)
+    if (connectedClients.length === 0) { numActiveConnections = 0 }
+}
