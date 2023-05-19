@@ -81,11 +81,12 @@ function mountClientSockEventHandlers(clientSock) {
     clientSock.on('close', handleClientClose)
 }
 
+// Activate the server.
 server.listen(3000, () => {
     log(`Chat server is up and listening for clients on port ${port}`)
 })
 
-// handle commands and messages coming from a client
+// Handle chat messsages and commands coming from a client.
 function handleClientData(data) {
     const message = data.toString().trim()
 
@@ -101,22 +102,20 @@ function handleClientData(data) {
     const targets =
         connectedClients.filter(c => c.clientID !== this.clientID)
 
-    // Format the chat message.
-    const chatMessage = logger.prependSender(this.clientID, message)
-
     // Distribute the chat message.
-    notifyOtherClients(this.clientID, chatMessage)
+    notifyOtherClients(this.clientID, message)
 }
 
-function notifyOtherClients(sendingClient, message) {
+// Broadcast a message to all connected clients except the sending client.
+function notifyOtherClients(sendingClientID, message) {
     // Select the targets- everyone except clientToSkip
     const targets =
-        connectedClients.filter(c => c.clientID !== sendingClient)
+        connectedClients.filter(c => c.clientID !== sendingClientID)
 
-    // Distribute the message to the selected targets
-    targets.forEach(target => sendToClient(target, `${message}\n`), sendingClient)
+    // Distribute the message to the targeted clients
+   targets.forEach(clientSock => sendToClient(clientSock, message, sendingClientID))
+    // targets.forEach(clientSock => console.log(clientSock.clientID))
 }
-
 
 // Handle the event generated when the client disconnects from the server.
 function handleClientClose() {
@@ -137,6 +136,7 @@ function handleClientClose() {
     if (connectedClients.length === 0) { numActiveConnections = 0 }
 }
 
+// Handle a /command sent from the client.
 function handleCommand(clientSock, message) {
     // Separate the command from the arguments
     const [command, ...args] = message.replace(/^\//, '').split(' ')
@@ -145,55 +145,79 @@ function handleCommand(clientSock, message) {
     switch (command.toLowerCase()) {
         case 'clientlist':
         case 'userlist':
-            return handleClientList(clientSock)
+            return handleCmdClientList(clientSock)
             break;
 
         case 'username':
-            return handleUpdateUsername(clientSock, args)
+            return handleCmdUsername(clientSock, args)
 
         case 'w':
-            return handleWhisper(clientSock.clientID, args)
+            return handleCmdWhisper(clientSock.clientID, args)
 
         case 'kick':
-            return handleKick(clientSock.clientID, args)
+            return handleCmdKick(clientSock.clientID, args)
 
         default: return false;
     }
     return true
 }
 
-function handleClientList(clientSock) {
+// Handle the /clientlist (aka /userlist) command.
+function handleCmdClientList(clientSock) {
     clientSock.write(`[Server] Currently connected clients:\n`)
     connectedClients.forEach((connectedClient) => {
-        sendToClient(clientSock, connectedClient.clientID)
+        let message = ''
+        // prefix an asterix if this is the requesting user's ID
+        if (clientSock.clientID === connectedClient.clientID) {
+            message = '*'
+        }
+        message += connectedClient.clientID
+        sendToClient(clientSock, message)
     })
 
     return true
 }
 
-function handleUpdateUsername(clientSock, args) {
-    const oldName = clientSock.clientID
-    clientSock.clientID = args[0]
-    const clientMessage = `Your username is now '${clientSock.clientID}'`
-    sendToClient(clientSock, clientMessage)
+// Handle the /username command.
+function handleCmdUsername(clientSock, args) {
+    if (args.length === 0) {
+        // User set /username command with no args.  Tell him what
+        // his own username is.
+        let message = `Your username is '${clientSock.clientID}'.`
+        sendToClient(clientSock, message)
+        message = `Send /username <newUsername> to change your user name.`
+        sendToClient(clientSock, message)
+    } else {
+        const oldClientID = clientSock.clientID
+        clientSock.clientID = args.join(' ')
 
-    const otherClientsMessage = `${oldName} will now be known as '${clientSock.clientID}'`
-    notifyOtherClients(clientSock.clientID, otherClientsMessage)
+        // Notify the sending client that their Username has been updated
+        var message = `Your username is now '${clientSock.clientID}'`
+        sendToClient(clientSock, message)
+
+        // Notify other users of the client's new name
+        message =
+         `${oldClientID} will now be known as '${clientSock.clientID}'`
+        notifyOtherClients(clientSock.clientID, message)
+    }
+
     return true;
 }
 
-function handleWhisper(senderID, args) {
+// Handle the /w (whisper) command.
+function handleCmdWhisper(senderID, args) {
     [ targetUserID, ...messageWords ] = args
     const target = connectedClients.find(client => client.clientID === targetUserID)
     message = messageWords.join(' ')
     if (target) {
-        sendToClient(target, message, senderID)
+        sendToClient(target, message, senderID + ' says privately:')
         return true;
     }
 
     return false;
 }
 
-function handleKick(senderID, args) {
+// Handle the /kick command.
+function handleCmdKick(senderID, args) {
     return false;
 }
