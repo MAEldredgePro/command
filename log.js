@@ -1,33 +1,47 @@
 const fs = require('fs');
-var logfilename;
+var logFileName;
 
-function create(filename) {
-    logfilename = filename;
+function create(fileName) {
+    logFileName = fileName;
 
-    const message = addTimestamp(addSender('Logger', 'Starting new log'))
-    fs.writeFileSync(logfilename, message + '\n', { flag: 'w' })
+    const message = prependTimestamp(prependSender('Logger', 'Starting new log'))
+    logFileWrite(message, CREATE_NEW_LOG)
 }
 
-function addSender(sender, message) {
-    return `[${sender}] ${message}`;
+function formatLogMessage(sender, message) {
+    return prependTimestamp(prependSender(sender, message)) + '\n'
 }
 
-function addTimestamp(message) {
+function prependTimestamp(message) {
     const now = new Date();
     const timestamp = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
     return `${timestamp} ${message}`;
 }
 
-function write(from, message, logToConsole = true) {
-    const messageString = addSender(from, message);
-
-    // Write the message string to the log file.
-    fs.writeFileSync(logfilename, addTimestamp(messageString) + '\n', { flag: 'a' })
-
-    // Write to the console as well if requested.
-    if (logToConsole) console.log(messageString);
-
-    return messageString
+function prependSender(sender, message) {
+    return `[${sender}] ${message}`;
 }
 
-module.exports = { create, write, addSender}
+const LOG_TO_CONSOLE = true
+const LOG_TO_FILE_ONLY = false
+function logFrom(from, message, logToConsole = LOG_TO_CONSOLE) {
+    const senderMessage = prependSender(from, message);
+
+    // Write the message string to the log file.
+    logFileWrite(prependTimestamp(senderMessage))
+
+    // Write to the console as well if requested.
+    if (logToConsole) console.log(senderMessage);
+}
+
+const APPEND_TO_LOG = true
+const CREATE_NEW_LOG = false
+
+function logFileWrite(message, append = APPEND_TO_LOG) {
+    const FW_FLAG_REWRITE = 'w'
+    const FW_FLAG_APPEND = 'a'
+    const fileWriteFlag = append ? FW_FLAG_APPEND : FW_FLAG_REWRITE
+    fs.writeFileSync(logFileName, `${message}\n`, { flag: fileWriteFlag })
+}
+
+module.exports = { create, prependSender, logFrom }
