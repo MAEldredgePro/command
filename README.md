@@ -1,6 +1,6 @@
 # Project 'command': Chat server enhancements - NodeJS Assignment (10pts)
 
-## Add to your chat servre the ability to respond to several administrative commands.
+## Add to your chat server the ability to respond to several administrative commands.
 ### Enhance your server to be able to handle the following commands from clients.
 ---
 - [ ] In all cases you should log the result to server.log.
