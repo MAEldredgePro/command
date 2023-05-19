@@ -41,7 +41,7 @@ server.on('connection', (clientSock) => {
     // Create a unique user ID for this client and add it to the client socket
     const clientID = clientSock.clientID = `User${++numActiveConnections}`
 
-    const message = `${clientID} has joined the chat`
+    let message = `${clientID} has joined the chat`
     // Log a status message indicating that a new client has connected.
     log(message)
 
@@ -56,8 +56,9 @@ server.on('connection', (clientSock) => {
     connectedClients.push(clientSock)
 
     // Log the number of currently attached clients
-    const client_s_String = `client${connectedClients.length === 1 ? '' : 's'}`
-    log(`${connectedClients.length} ${client_s_String} attached`)
+    const suffixNoneOrS = connectedClients.length === 1 ? '' : 's'
+    message = `${connectedClients.length} client${suffixNoneOrS} attached`
+    log(message)
 
     // Send a welcome message to the client
     sendToClient(clientSock, `Welcome to the chat, ${clientSock.clientID}`)
