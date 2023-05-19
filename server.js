@@ -139,28 +139,47 @@ function handleClientClose() {
 
 // Handle a /command sent from the client.
 function handleCommand(clientSock, message) {
+    const commandHandlers = {
+        'help': handleCmdHelp,
+        'clientList': handleCmdClientList,
+        'userList': handleCmdClientList,
+        'username': handleCmdUsername,
+        'w': handleCmdWhisper,
+        'kick': handleCmdKick,
+    }
     // Separate the command from the arguments
     const [command, ...args] = message.replace(/^\//, '').split(' ')
 
+    const handler = commandHandlers[command];
+    return handler(clientSock, args);
+
     // Route the command to the corresponding handler
-    switch (command.toLowerCase()) {
-        case 'clientlist':
-        case 'userlist':
-            return handleCmdClientList(clientSock)
-            break;
+    // switch (command.toLowerCase()) {
+    //     case 'help':
+    //         return handleCmdHelp(clientSock)
+    //         break;
 
-        case 'username':
-            return handleCmdUsername(clientSock, args)
+    //     case 'clientlist':
+    //     case 'userlist':
+    //         return handleCmdClientList(clientSock)
+    //         break;
 
-        case 'w':
-            return handleCmdWhisper(clientSock.clientID, args)
+    //     case 'username':
+    //         return handleCmdUsername(clientSock, args)
 
-        case 'kick':
-            return handleCmdKick(clientSock.clientID, args)
+    //     case 'w':
+    //         return handleCmdWhisper(clientSock.clientID, args)
 
-        default: return false;
-    }
-    return true
+    //     case 'kick':
+    //         return handleCmdKick(clientSock.clientID, args)
+
+    //     default: return false;
+    // }
+    // return true
+}
+// Handle the /help command
+function handleCmdHelp(clientSock, args) {
+    return true;
 }
 
 // Handle the /clientlist (aka /userlist) command.
@@ -206,12 +225,12 @@ function handleCmdUsername(clientSock, args) {
 }
 
 // Handle the /w (whisper) command.
-function handleCmdWhisper(senderID, args) {
+function handleCmdWhisper(clientSock, args) {
     [ targetUserID, ...messageWords ] = args
-    const target = connectedClients.find(client => client.clientID === targetUserID)
+    const targetSock = connectedClients.find(client => client.clientID === targetUserID)
     message = messageWords.join(' ')
-    if (target) {
-        sendToClient(target, message, senderID + ' says privately:')
+    if (targetSock) {
+        sendToClient(targetSock, message, clientSock.clientID + ' says privately:')
         return true;
     }
 
