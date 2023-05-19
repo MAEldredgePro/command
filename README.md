@@ -4,6 +4,8 @@
 ### Enhance your server to be able to handle the following commands from clients.
 ---
 - [ ] In all cases you should log the result to server.log.
+- [ ] **/help**
+   - [ ] Sends a list of available commands and their descriptions/usage
 - [ ] **/clientlist**
    - [ ] Sends a list of all connected client names to the requesting client.
 - [ ] **/username**
