@@ -100,22 +100,18 @@ function handleClientData(data) {
     // Broadcast the client's chat message to all the other clients,
     // being sure to exclude the sending client from the list of targets.
 
-    // Select the targets.
-    const targets =
-        connectedClients.filter(c => c.clientID !== this.clientID)
-
     // Distribute the chat message.
-    notifyOtherClients(this.clientID, message)
+    sendToAllExcept(this.clientID, message, this.clientID)
 }
 
 // Broadcast a message to all connected clients except the sending client.
-function notifyOtherClients(sendingClientID, message) {
+function sendToAllExcept(excludedClientID, message, sendFrom) {
     // Select the targets- everyone except clientToSkip
     const targets =
-        connectedClients.filter(c => c.clientID !== sendingClientID)
+        connectedClients.filter(c => c.clientID !== excludedClientID)
 
     // Distribute the message to the targeted clients
-    targets.forEach(clientSock => sendToClient(clientSock, message, sendingClientID))
+    targets.forEach(clientSock => sendToClient(clientSock, message, sendFrom))
     // targets.forEach(clientSock => console.log(clientSock.clientID))
 }
 
@@ -256,26 +252,29 @@ function handleUsername(clientSock, args) {
         return;
     }
 
+    // Disallow multi-word user names.
     if (args.length > 1) {
         const message = `Error: Multi-word usernames are not allowed.`
         sendToClient(clientSock, message)
-        throw new Error(`Error handling '/username ${newClientID}' request` +
-        ` from ${oldClientID}.  Multi-word usernames are not allowed.`)
+        throw new Error(`Input error while handling request from ${oldClientID}: ` +
+            `'/username ${newClientID}'. Multi-word usernames are not allowed.`)
     }
 
-    // check and see if the user is trying to choose his current
-    // username as a new name.  It's a requirement.
+    // Reject if the user is trying to choose his current username
+    // as their new name.  It's a requirement.
     if (newClientID === oldClientID) {
-        const message = `Error: your username is already ${newClientID}`
+        const message = `Error: your username is already '${newClientID}'`
         sendToClient(clientSock, message)
-        return true;
+        throw new Error(`Input error while handling ${oldClientID} request: ` +
+            `'/username ${newClientID}'. Client's username is already '${oldClientID}'.`)
     }
 
     // Check to see if anyone else is already using the requested username.
     if (connectedClients.find(client => newClientID === client.clientID)) {
-        const message = `Error: User name '${newClientID}' is already being used`
+        const message = `Error: User name '${newClientID}' is already in use.`
         sendToClient(clientSock, message)
-        return true;
+        throw new Error(`Session error while handling ${oldClientID} request: ` +
+            `'/username ${newClientID}'. Requested username is already in use.`)
     }
 
     // Change the username
@@ -287,8 +286,8 @@ function handleUsername(clientSock, args) {
 
     // Notify other users of the client's new name
     message =
-        `${oldClientID} will now be known as '${clientSock.clientID}'`
-    notifyOtherClients('Server', message)
+        `${oldClientID} will now be known as '${newClientID}'`
+    sendToAllExcept(newClientID, message)
 
     log(`Successfully changed [${oldClientID}] username to [${newClientID}]`)
     return true;

@@ -8,18 +8,18 @@
    - [x] log the result to server.log.
 - [x] **/clientlist**
    - [x] Sends a list of all connected client names to the requesting client.
-   - [ ] log the result to server.log.
+   - [x] log the result to server.log.
 - [ ] **/username**
    - [x] Updates the username of the client that sent the command.
    - [x] For example, if Guest2 sends ‘/username John’ then Guest2’s username should be updated to ‘John’.
-   - [ ] Handle Error Conditions. Your server should send an informative error message if the command fails for any reason.
-     - [ ] Incorrect number of inputs
-     - [ ] Username already in use
-     - [ ] The new username is the same as the old username
+   - [x] Handle Error Conditions. Your server should send an informative error message if the command fails for any reason.
+     - [x] Incorrect number of inputs
+     - [x] Username already in use
+     - [x] The new username is the same as the old username
    - [x] If there is no error then
      - [x] a message should be broadcast to all users informing them of the name change.
      - [x]  Send a specialized message to the originating user informing them that the name change was successful.
-     - [ ]  log the result to server.log.
+     - [x]  log the result to server.log.
 - [ ] **/w**
    - [ ] Sends a whisper (private, direct message) to another connected client.
    - For example: **/w Guest3 Hi** Should send the message 'Hi' to Guest3 only.
