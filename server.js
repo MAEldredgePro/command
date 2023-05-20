@@ -226,14 +226,14 @@ function handleCommand(clientSock, message) {
 function handleClientList(clientSock) {
     clientSock.write(`[Server] Currently connected clients:\n`)
     connectedClients.forEach((connectedClient) => {
-        let message = ''
-        // prefix an asterix if this is the requesting user's ID
+        let message = connectedClient.clientID
         if (clientSock.clientID === connectedClient.clientID) {
-            message = '*'
+            message += ' (you)'
         }
-        message += connectedClient.clientID
         sendToClient(clientSock, message)
     })
+    log(`Successfully handled /clientlist request from ${clientSock.clientID}`)
+    return;
 }
 
 // Handle the /username command.
@@ -295,11 +295,54 @@ function handleUsername(clientSock, args) {
 
 // Handle the /w (whisper) command.
 function handleWhisper(clientSock, args) {
-    [targetUserID, ...messageWords] = args
-    const targetSock = connectedClients.find(client => client.clientID === targetUserID)
+    // Verify that there are enough arguments to attempt to fulfil this
+    // command
+    if (!args.length) {
+        // Respond to the client that the request is malformed.
+        sendToClient(clientSock, 'You must supply a username and message in ' +
+            'order to whisper a private message')
+        sendToClient(clientSock, 'to another user. Please try again using ' +
+            `the form '/w <username> <message>'`)
+        throw new Error(`${clientSock.clientID} tried to execute a whisper ` +
+            `(/w) command with no recipient or message`)
+    }
+
+    if (args.length === 1) {
+        // Respond to the client that the request is malformed.
+        sendToClient(clientSock, 'You must supply a username *and message* in ' +
+            'order to whisper a private message')
+        sendToClient(clientSock, 'to another user. Please try again using ' +
+            `the form '/w <username> <message>'`)
+        throw new Error(`${clientSock.clientID} tried to execute a whisper ` +
+            `(/w) command with no message`)
+    }
+
+    // parse out the recipient User ID and the message
+    [recipUserID, ...messageWords] = args
+
+    // Reject if the recipient User ID is the same as the sender User ID
+    if (recipUserID === clientSock.clientID) {
+        sendToClient(clientSock, 'Sending private messages to yourself ' +
+            'is (strangely) not allowed.')
+        throw new Error(`${clientSock.clientID} tried to whisper (/w) to ` +
+            `themselves`)
+    }
+
+    // look up the recipient
+    const recipSock = connectedClients.find(client => client.clientID === recipUserID)
+
+    // Reject if the requested recipient is not found
+    if (!recipSock) {
+        sendToClient(clientSock, `Chat client [${recipUserID}] is not ` +
+            'connected to this server.')
+        sendToClient(clientSock, "Use command '/clientlist' to show a list " +
+            'of currently connected clients.')
+        throw new Error(`${clientSock.clientID} tried to whisper ` +
+            `(/w) to an unknown user [${recipUserID}]`)
+    }
     message = messageWords.join(' ')
-    if (targetSock) {
-        sendToClient(targetSock, message, clientSock.clientID + ' says privately:')
+    if (recipSock) {
+        sendToClient(recipSock, message, clientSock.clientID + ' (to you only)')
         return true;
     }
 
