@@ -62,6 +62,7 @@ server.on('connection', (clientSock) => {
 
     // Send a welcome message to the client
     sendToClient(clientSock, `Welcome to the chat, ${clientSock.clientID}`)
+    sendToClient(clientSock, `  Send '/help' for a list of available commands.`)
 })
 
 function sendToClient(clientSock, message, sender = 'Server') {
@@ -114,7 +115,7 @@ function notifyOtherClients(sendingClientID, message) {
         connectedClients.filter(c => c.clientID !== sendingClientID)
 
     // Distribute the message to the targeted clients
-   targets.forEach(clientSock => sendToClient(clientSock, message, sendingClientID))
+    targets.forEach(clientSock => sendToClient(clientSock, message, sendingClientID))
     // targets.forEach(clientSock => console.log(clientSock.clientID))
 }
 
@@ -139,51 +140,76 @@ function handleClientClose() {
 
 // Handle a /command sent from the client.
 function handleCommand(clientSock, message) {
-    const commandHandlers = {
-        'help': handleCmdHelp,
-        'clientList': handleCmdClientList,
-        'userList': handleCmdClientList,
-        'username': handleCmdUsername,
-        'w': handleCmdWhisper,
-        'kick': handleCmdKick,
+    const commands = {
+        'help': {
+            handler: handleHelp,
+            usages: ['/help'],
+            desc: 'Print the list of available commands'
+        },
+        'clientlist': {
+            handler: handleClientList,
+            usages: ['/clientlist'],
+            desc: 'Print the list of currently connected clients'
+        },
+        'userlist': {
+            handler: handleClientList,
+            usages: ['/userList'],
+            desc: 'Print the list of currently connected clients'
+        },
+        'username': {
+            handler: handleUsername,
+            usages: ['/username',
+                '/username newUserName'],
+            desc: 'Return your current username, or change your username'
+        },
+        'w': {
+            handler: handleWhisper,
+            usages: ['/w username messsage'],
+            desc: 'Whisper (send message only to the specified user).'
+        },
+        'kick': {
+            handler: handleKick,
+            usages: ['/kick username password'],
+            desc: 'Kick another user out of the chat session.  Must supply admin password'
+        },
     }
+
     // Separate the command from the arguments
     const [command, ...args] = message.replace(/^\//, '').split(' ')
 
-    const handler = commandHandlers[command];
-    return handler(clientSock, args);
+    // select the command spec using the command string
+    const comspec = commands[command.toLowerCase()] || commands['help']
 
-    // Route the command to the corresponding handler
-    // switch (command.toLowerCase()) {
-    //     case 'help':
-    //         return handleCmdHelp(clientSock)
-    //         break;
+    // call the command handler
+    return comspec.handler(clientSock, args);
 
-    //     case 'clientlist':
-    //     case 'userlist':
-    //         return handleCmdClientList(clientSock)
-    //         break;
+    // '/help' commannd handler.  Defined here bc it needs access
+    // to the 'commands' object
+    // Handle the /help command
+    function handleHelp(clientSock, args) {
+        let message = 'Here is a list of available commands:'
+        sendToClient(clientSock, message)
 
-    //     case 'username':
-    //         return handleCmdUsername(clientSock, args)
+        Object.keys(commands).forEach((key) => {
+            sendToClient(clientSock, '')
+            sendToClient(clientSock, '/' + key)
+            const comspec = commands[key]
+            sendToClient(clientSock, ` ${comspec.desc}`)
+            sendToClient(clientSock, ' Usage:')
 
-    //     case 'w':
-    //         return handleCmdWhisper(clientSock.clientID, args)
+            // console.log(comspec.usages)
+            comspec.usages.forEach((usage) => {
+                sendToClient(clientSock, `  ${usage}`)
+            })
+        })
+    }
 
-    //     case 'kick':
-    //         return handleCmdKick(clientSock.clientID, args)
-
-    //     default: return false;
-    // }
-    // return true
-}
-// Handle the /help command
-function handleCmdHelp(clientSock, args) {
     return true;
 }
 
-// Handle the /clientlist (aka /userlist) command.
-function handleCmdClientList(clientSock) {
+
+// hanldle '/clientList' command
+function handleClientList(clientSock) {
     clientSock.write(`[Server] Currently connected clients:\n`)
     connectedClients.forEach((connectedClient) => {
         let message = ''
@@ -195,17 +221,17 @@ function handleCmdClientList(clientSock) {
         sendToClient(clientSock, message)
     })
 
-    return true
+    return true;
 }
 
 // Handle the /username command.
-function handleCmdUsername(clientSock, args) {
+function handleUsername(clientSock, args) {
     if (args.length === 0) {
         // User set /username command with no args.  Tell him what
         // his own username is.
         let message = `Your username is '${clientSock.clientID}'.`
         sendToClient(clientSock, message)
-        message = `Send /username <newUsername> to change your user name.`
+        message = `Send /username newUsername to change your user name.`
         sendToClient(clientSock, message)
     } else {
         const oldClientID = clientSock.clientID
@@ -217,7 +243,7 @@ function handleCmdUsername(clientSock, args) {
 
         // Notify other users of the client's new name
         message =
-         `${oldClientID} will now be known as '${clientSock.clientID}'`
+            `${oldClientID} will now be known as '${clientSock.clientID}'`
         notifyOtherClients(clientSock.clientID, message)
     }
 
@@ -225,8 +251,8 @@ function handleCmdUsername(clientSock, args) {
 }
 
 // Handle the /w (whisper) command.
-function handleCmdWhisper(clientSock, args) {
-    [ targetUserID, ...messageWords ] = args
+function handleWhisper(clientSock, args) {
+    [targetUserID, ...messageWords] = args
     const targetSock = connectedClients.find(client => client.clientID === targetUserID)
     message = messageWords.join(' ')
     if (targetSock) {
@@ -238,6 +264,6 @@ function handleCmdWhisper(clientSock, args) {
 }
 
 // Handle the /kick command.
-function handleCmdKick(senderID, args) {
+function handleKick(senderID, args) {
     return false;
 }

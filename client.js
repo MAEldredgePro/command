@@ -9,7 +9,7 @@ process.on('SIGINT', () => {
 })
 
 const client = net.createConnection(port, () => {
-    console.log(`Successfully connected to server localhost:${port}`)
+    console.log(`Successfully connected to server localhost:${port}.  Ctrl+C to disconnect.`)
 })
 
 client.on('error', (err) => {
