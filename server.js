@@ -181,30 +181,48 @@ function handleCommand(clientSock, message) {
     const comspec = commands[command.toLowerCase()] || commands['help']
 
     // call the command handler
-    return comspec.handler(clientSock, args);
+    try {
+        comspec.handler(clientSock, args);
+    }
+    catch (e) {
+        log(e)
+    }
 
-    // '/help' commannd handler.  Defined here bc it needs access
-    // to the 'commands' object
+    return true;
+
+    // '/help' command handler.  Defined here bc it needs access
+    // to the 'commands' object which is also locallly defined in this
+    // function.
+
     // Handle the /help command
     function handleHelp(clientSock, args) {
         let message = 'Here is a list of available commands:'
         sendToClient(clientSock, message)
 
+        // Iterate the available commands and send the command and its
+        // description to the client.
         Object.keys(commands).forEach((key) => {
+            // Send an empty line to separate the commands one from another
+            // Just a bit of vertical whitespace...
             sendToClient(clientSock, '')
+
+            // Send the command for display
             sendToClient(clientSock, '/' + key)
+
+            // send the 'Usage' sectio header
             const comspec = commands[key]
             sendToClient(clientSock, ` ${comspec.desc}`)
             sendToClient(clientSock, ' Usage:')
 
+            // Send each of the 'Usage' examples
             // console.log(comspec.usages)
             comspec.usages.forEach((usage) => {
                 sendToClient(clientSock, `  ${usage}`)
             })
         })
-    }
 
-    return true;
+        log(`Successfully handled /help request from ${clientSock.clientID}`)
+    }
 }
 
 
@@ -220,12 +238,13 @@ function handleClientList(clientSock) {
         message += connectedClient.clientID
         sendToClient(clientSock, message)
     })
-
-    return true;
 }
 
 // Handle the /username command.
 function handleUsername(clientSock, args) {
+    const oldClientID = clientSock.clientID
+    const newClientID = args.join(' ')
+
     if (args.length === 0) {
         // User set /username command with no args.  Tell him what
         // his own username is.
@@ -233,20 +252,45 @@ function handleUsername(clientSock, args) {
         sendToClient(clientSock, message)
         message = `Send /username newUsername to change your user name.`
         sendToClient(clientSock, message)
-    } else {
-        const oldClientID = clientSock.clientID
-        clientSock.clientID = args.join(' ')
-
-        // Notify the sending client that their Username has been updated
-        var message = `Your username is now '${clientSock.clientID}'`
-        sendToClient(clientSock, message)
-
-        // Notify other users of the client's new name
-        message =
-            `${oldClientID} will now be known as '${clientSock.clientID}'`
-        notifyOtherClients(clientSock.clientID, message)
+        log(`Successfully handled /username request from ${clientSock.clientID}`)
+        return;
     }
 
+    if (args.length > 1) {
+        const message = `Error: Multi-word usernames are not allowed.`
+        sendToClient(clientSock, message)
+        throw new Error(`Error handling '/username ${newClientID}' request` +
+        ` from ${oldClientID}.  Multi-word usernames are not allowed.`)
+    }
+
+    // check and see if the user is trying to choose his current
+    // username as a new name.  It's a requirement.
+    if (newClientID === oldClientID) {
+        const message = `Error: your username is already ${newClientID}`
+        sendToClient(clientSock, message)
+        return true;
+    }
+
+    // Check to see if anyone else is already using the requested username.
+    if (connectedClients.find(client => newClientID === client.clientID)) {
+        const message = `Error: User name '${newClientID}' is already being used`
+        sendToClient(clientSock, message)
+        return true;
+    }
+
+    // Change the username
+    clientSock.clientID = newClientID
+
+    // Notify the sending client that their Username has been updated
+    var message = `Your username is now '${clientSock.clientID}'`
+    sendToClient(clientSock, message)
+
+    // Notify other users of the client's new name
+    message =
+        `${oldClientID} will now be known as '${clientSock.clientID}'`
+    notifyOtherClients('Server', message)
+
+    log(`Successfully changed [${oldClientID}] username to [${newClientID}]`)
     return true;
 }
 
