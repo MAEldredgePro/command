@@ -29,19 +29,19 @@
      - [x] trying to whisper themselves
    - [x] If there is no error then a private message containing the sender’s name and the whispered message should be sent to the indicated user
    - [x] log the result to server.log.
- - [ ] **/kick**
-    - [ ] Kicks another connected client off the chat server, as long as the supplied admin password is correct.
+ - [x] **/kick**
+    - [x] Kicks another connected client off the chat server, as long as the supplied admin password is correct.
     - You can just store an adminPassword variable in memory on your server for now.
     - For example ‘/kick Guest3 supersecretpw’ should kick Guest3 from the chat server
-    - [ ] Your server should send an informative error message if the command fails for any reason
-      - [ ] incorrect number of inputs
-      - [ ] incorrect admin password
-      - [ ] trying to kick themselves
-      - [ ] invalid username to kick
-    - [ ] If there is no error then a private message should be sent to the kicked user informing them that they have been kicked from the chat.
-    - [ ] They should then be removed from the server
-    - [ ] Broadcast a message to all other users informing them that the kicked user has left the chat.
-    - [ ] log the result to server.log.
+    - [x] Your server should send an informative error message if the command fails for any reason
+      - [x] incorrect number of inputs
+      - [x] incorrect admin password
+      - [x] trying to kick themselves
+      - [x] invalid username to kick
+    - [x] If there is no error then a private message should be sent to the kicked user informing them that they have been kicked from the chat.
+    - [x] They should then be removed from the server
+    - [x] Broadcast a message to all other users informing them that the kicked user has left the chat.
+    - [x] log the result to server.log.
 
 Submission:
 Create a private repository.

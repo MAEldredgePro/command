@@ -297,14 +297,14 @@ function handleUsername(clientSock, args) {
 function handleWhisper(clientSock, args) {
     // Verify that there are enough arguments to attempt to fulfil this
     // command
-    if (!args.length) {
+    if (args.length === 0) {
         // Respond to the client that the request is malformed.
         sendToClient(clientSock, 'You must supply a username and message in ' +
             'order to whisper a private message')
         sendToClient(clientSock, 'to another user. Please try again using ' +
             `the form '/w <username> <message>'`)
         throw new Error(`${clientSock.clientID} tried to execute a whisper ` +
-            `(/w) command with no recipient or message`)
+            `(/w) command with no target username or message`)
     }
 
     if (args.length === 1) {
@@ -317,32 +317,30 @@ function handleWhisper(clientSock, args) {
             `(/w) command with no message`)
     }
 
-    // parse out the recipient User ID and the message
-    [recipUserID, ...messageWords] = args
-
-    // Reject if the recipient User ID is the same as the sender User ID
-    if (recipUserID === clientSock.clientID) {
+    // Reject if the target User ID is the same as the sender User ID
+    if (targetID === clientSock.clientID) {
         sendToClient(clientSock, 'Sending private messages to yourself ' +
             'is (strangely) not allowed.')
         throw new Error(`${clientSock.clientID} tried to whisper (/w) to ` +
             `themselves`)
     }
 
-    // look up the recipient
-    const recipSock = connectedClients.find(client => client.clientID === recipUserID)
+    // look up the target socket
+    const targetSock = connectedClients.find(client =>
+        client.clientID === targetID)
 
-    // Reject if the requested recipient is not found
-    if (!recipSock) {
-        sendToClient(clientSock, `Chat client [${recipUserID}] is not ` +
+    // Reject if the target is not found
+    if (!targetSock) {
+        sendToClient(clientSock, `Chat client [${targetID}] is not ` +
             'connected to this server.')
         sendToClient(clientSock, "Use command '/clientlist' to show a list " +
             'of currently connected clients.')
         throw new Error(`${clientSock.clientID} tried to whisper ` +
-            `(/w) to an unknown user [${recipUserID}]`)
+            `(/w) to an unknown user [${targetID}]`)
     }
     message = messageWords.join(' ')
-    if (recipSock) {
-        sendToClient(recipSock, message, clientSock.clientID + ' (to you only)')
+    if (targetSock) {
+        sendToClient(targetSock, message, clientSock.clientID + ' (to you only)')
         return true;
     }
 
@@ -350,6 +348,83 @@ function handleWhisper(clientSock, args) {
 }
 
 // Handle the /kick command.
-function handleKick(senderID, args) {
-    return false;
+function handleKick(clientSock, args) {
+    // Verify that there are enough arguments to attempt to fulfil this
+    // command
+    if (args.length === 0) {
+        // Respond to the client that the request is malformed.
+        sendToClient(clientSock, 'ERROR: Not enough arguments.')
+        sendToClient(clientSock, 'You must supply a username and the admin ' +
+            'password in order to kick a user from the server.')
+        sendToClient(clientSock, 'Please try again using the form ' +
+            `'/kick <username> <adminPassword>'`)
+        throw new Error(`User [${clientSock.clientID}] tried to execute a ` +
+            `/kick command with no arguments`)
+    }
+
+    if (args.length === 1) {
+        // Respond to the client that the request is malformed.
+        sendToClient(clientSock, 'ERROR: Not enough arguments.')
+        sendToClient(clientSock, 'You must supply a username *and the ' +
+            'admin password* in order to kick a user from the server.')
+        sendToClient(clientSock, 'Please try again using the form ' +
+            `'/kick <username> <adminPassword>'`)
+        throw new Error(`User [${clientSock.clientID}] tried to execute a kick ` +
+            `(/kick) command with no admin password`)
+    }
+
+    if (args.length > 2) {
+        // Respond to the client that the request is malformed.
+        sendToClient(clientSock, 'ERROR: Too many arguments.')
+        sendToClient(clientSock, 'Supply the username of the user to kick, '+
+            'the admin password, *and nothing else* ')
+        sendToClient(clientSock, 'to successfully kick a user from the server.')
+        sendToClient(clientSock, 'Please try again using the form /kick ' +
+            '<username> <adminPassword>')
+
+        // Throw an exception that will get logged to the server log
+        throw new Error(`User [${clientSock.clientID}] tried to execute a ` +
+            `(/kick) command with too many arguments (${args.length}/2)`)
+    }
+
+    // parse out the target User ID and the admin password
+    const [targetID, adminPassword] = args
+
+    // Reject if the target User ID is the same as the sender User ID
+    if (targetID === clientSock.clientID) {
+        sendToClient(clientSock, 'Kicking yourself off the server ' +
+            'is (strangely) not allowed.  Ctrl+C will do the trick, though.')
+        throw new Error(`${clientSock.clientID} tried to whisper (/w) to ` +
+            `themselves`)
+    }
+
+    // look up the target socket
+    const targetSock = connectedClients.find(client =>
+        client.clientID === targetID)
+
+    // Reject if the targetID is not found
+    if (!targetSock) {
+        sendToClient(clientSock, `Chat client [${targetID}] is not ` +
+            'connected to this server.')
+        sendToClient(clientSock, "Use command '/clientlist' to show a list " +
+            'of currently connected clients.')
+        throw new Error(`${clientSock.clientID} tried to kick ` +
+            `(/kick) an unknown user [${targetID}]`)
+    }
+
+    // Reject if the client supplied the wrong password
+    if (adminPassword !== 'supersecretpw') {
+        sendToClient(clientSock, 'You supplied the wrong passowrd.  Try ' +
+            'again.')
+        throw new Error(`User [${clientSock.clientID}] tried to /kick user ` +
+            `[${targetID}] with invalid admin credentials.`)
+    }
+
+    // Kick the offending user
+    const senderID = clientSock.clientID
+    sendToClient(targetSock, `Admin user [${senderID}] is kicking you off ` +
+        'the chat server.')
+    sendToClient(targetSock, 'Bye...')
+    targetSock.destroy()
+    log(`User [${senderID}] has kicked user [${targetID}] off the server.`)
 }
