@@ -46,4 +46,4 @@
 Submission:
 Create a private repository.
 Upload your Git Hub link.
-Share your private repository with Curtis Dalton and Thomas Chan.
+Share your private repository with Curtis Dalton (ctdalton) and Thomas Chan (chan-thomas).
